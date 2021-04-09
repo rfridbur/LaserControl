@@ -18,8 +18,6 @@ class Laser():
         self.__ip = machine['ip']
         self.__log_file = log_file
         self.__orig_file_content = ""
-        self.__diff = difflib.Differ()
-        self.__lock = threading.Lock()
         self.__event_id = 0
         self.__db_update_lines = 0
 
@@ -32,19 +30,23 @@ class Laser():
 
         self.__log.info(f"laster initialized for {self.__name} [{self.__ip}]")
 
+    # staic variable, common to all instances
+    # needed to synchronize all SQL inserts
+    lock = threading.Lock()
+
     def __on_modified(self, event):
         """
         even handler for modified file
         function is called when file is being modified
         handling is done under lock, in order to avoid multiple parallel instances
         """
+        self.__log.info(f'event type: {event.event_type}  path: {event.src_path}')
+
         total_lines_count = 0
         self.__db_update_lines = 0
         start_time = datetime.datetime.now()
         # critical section - start
-        self.__lock.acquire()
-
-        self.__log.info(f'event type: {event.event_type}  path: {event.src_path}')
+        self.lock.acquire()
         new_file = self.__get_file_content(self.__log_file)
 
         # the log file is incremental, therefore, to ignore previous changes
@@ -54,7 +56,10 @@ class Laser():
         # added lines are represented with '+', while removed are with '-'
         # basically, for our purposes, we are interested only in new lines
         # therefore, all the regex are started with '+'
-        for line in self.__diff.compare(self.__orig_file_content.splitlines(), new_file.splitlines()):
+        orig = self.__orig_file_content.splitlines()
+        new = new_file.splitlines()
+        # analyze line by line
+        for line in difflib.unified_diff(orig, new):
             if line.startswith("+"):
                 total_lines_count += 1
                 if self.__match_activity(line): continue
@@ -67,7 +72,7 @@ class Laser():
         self.__orig_file_content = new_file
 
         # critical section - end
-        self.__lock.release()
+        self.lock.release()
         end_time = datetime.datetime.now()
         delta = end_time - start_time
         self.__log.debug(f"total lines: {total_lines_count} db update: {self.__db_update_lines}, parse time: {delta.seconds} [s] {delta.microseconds} [us]")
@@ -112,7 +117,7 @@ class Laser():
         function is responsible to match the laser activity
         returns true/false in case match was found
         """
-        match = re.findall(f'\+ ({TIME_FORMAT}).*busy Value: (\S+)', line)
+        match = re.findall(f'\+({TIME_FORMAT}).*busy Value: (\S+)', line)
         if match:
             event_sequence = self.__get_incremented_event_id()
             submission_date = self.__str_to_datetime(match[0][0])
@@ -125,7 +130,7 @@ class Laser():
         function is responsible to match the laser temperature
         returns true/false in case match was found
         """
-        match = re.findall(f'\+ ({TIME_FORMAT}).*temperature(\d) Value: (\S+)', line)
+        match = re.findall(f'\+({TIME_FORMAT}).*temperature(\d) Value: (\S+)', line)
         if match:
             event_sequence = self.__get_incremented_event_id()
             submission_date = self.__str_to_datetime(match[0][0])
@@ -139,7 +144,7 @@ class Laser():
         function is responsible to match the laser keyswitch (door open/close)
         returns true/false in case match was found
         """
-        match = re.findall(f'\+ ({TIME_FORMAT}).*keySwitchPos Value: (\S+)', line)
+        match = re.findall(f'\+({TIME_FORMAT}).*keySwitchPos Value: (\S+)', line)
         if match:
             event_sequence = self.__get_incremented_event_id()
             submission_date = self.__str_to_datetime(match[0][0])
@@ -152,10 +157,13 @@ class Laser():
         function is responsible to match the laser error
         returns true/false in case match was found
         """
-        match = re.findall(f'\+ ({TIME_FORMAT}).*error Value: (\S+)', line)
+        match = re.findall(f'\+({TIME_FORMAT}).*error Value: (\S+)', line)
         if match:
             event_sequence = self.__get_incremented_event_id()
             submission_date = self.__str_to_datetime(match[0][0])
             is_error = self.__str_to_bool(match[0][1])
             dbmanager.add_error_record(self.__id, event_sequence, submission_date, is_error)
             self.__db_update_lines += 1
+
+            # these are rare, print for tracking
+            self.__log.info(f"error: {is_error}")

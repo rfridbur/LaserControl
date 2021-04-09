@@ -19,8 +19,8 @@ CREATE TABLE machine(
 );
 
 INSERT INTO machine (name,ip,shared_folder) VALUES ('SL200','10.100.102.4','test');
-INSERT INTO machine (name,ip,shared_folder) VALUES ('SL3','10.100.102.4','test');
-INSERT INTO machine (name,ip,shared_folder) VALUES ('FR4','10.100.102.4','test');
+INSERT INTO machine (name,ip,shared_folder) VALUES ('SL3','10.100.102.4','test1');
+INSERT INTO machine (name,ip,shared_folder) VALUES ('FR4','10.100.102.4','test2');
 
 UPDATE machine SET shared_folder = 'test2' WHERE name = 'SL3'
 

@@ -1,0 +1,25 @@
+uninstall mysql:
+sudo systemctl stop mysql
+sudo apt-get purge mysql-server mysql-client mysql-common mysql-server-core-* mysql-client-core-*
+sudo rm -rf /etc/mysql /var/lib/mysql
+sudo apt autoremove
+sudo apt autoclean
+
+install mysql:
+sudo apt update
+sudo apt install mysql-server
+sudo mysql_secure_installation
+sudo mysql
+CREATE USER 'ubuntu'@'localhost' IDENTIFIED WITH mysql_native_password BY '1234567890';
+GRANT ALL PRIVILEGES ON * . * TO 'ubuntu'@'localhost';
+FLUSH PRIVILEGES;
+
+change data dir:
+sudo /etc/init.d/mysql stop
+sudo cp -R -p /var/lib/mysql /media/usbstick/mysql
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
+>> uncomment: datadir = /media/usbstick/mysql
+sudo nano /etc/apparmor.d/usr.sbin.mysqld
+>> raplace all: /var/lib/mysql/ by /media/usbstick/mysql
+sudo /etc/init.d/apparmor reload
+sudo /etc/init.d/mysql restart
