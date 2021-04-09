@@ -1,6 +1,7 @@
 import mysql.connector
 import datetime
 import time
+import sys
 
 # all methods are static - no class is needed
 
@@ -13,6 +14,7 @@ mydb = mysql.connector.connect(
 )
 
 mycursor = mydb.cursor()
+# mydb.autocommit = True
 
 def get_machines() -> list:
     """
@@ -33,7 +35,7 @@ def get_machines() -> list:
                 "shared_folder":machine[3],
             }
         )
-    
+
     return machines
 
 def add_activity_record(machine_id:int, event_sequence:int, submission_date:datetime, is_active:bool):
@@ -83,6 +85,43 @@ def add_error_record(machine_id:int, event_sequence:int, submission_date:datetim
 
     val = (machine_id, event_sequence, submission_date, is_error)
     mycursor.execute(sql, val)
+
+def add_machine_record(name: str, ip: str, shared_folder: str):
+    """
+    function adds record to [machine] table
+    """
+    sql = (
+        "INSERT INTO machine (name, ip, shared_folder)"
+        "VALUES (%s,%s,%s)"
+    )
+
+    val =  (name, ip, shared_folder)
+    mycursor.execute(sql, val)
+    commit()
+
+def delete_row_from_table(record_id: int, table: str):
+    """
+    fucntion delets row id from table
+    assumption: column 'id' exists in table
+    """
+    sql = (
+        f'DELETE FROM {table} WHERE id = "{str(record_id)}"'
+    )
+    mycursor.execute(sql)
+    mydb.commit()
+
+def update_machine_record(record_id: int, name: str, ip: str, shared_folder: str):
+    """
+    function updates record in [machine] table
+    """
+    sql = (
+        'UPDATE machine '
+        f'SET name = "{name}", ip = "{ip}", shared_folder = "{shared_folder}" '
+        f'WHERE id = "{str(record_id)}"'
+    )
+
+    mycursor.execute(sql)
+    commit()
 
 def commit():
     """
