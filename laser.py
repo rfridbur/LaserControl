@@ -28,7 +28,7 @@ class Laser():
         self.__observer.schedule(self.__event_handler, path=self.__log_file)
         self.__observer.start()
 
-        self.__log.info(f"laster initialized for {self.__name} [{self.__ip}]")
+        self.__log.info(f"laser initialized for {self.__name} [{self.__ip}]")
 
     # staic variable, common to all instances
     # needed to synchronize all SQL inserts
