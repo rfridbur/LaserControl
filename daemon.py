@@ -10,7 +10,7 @@ import laser
 import json
 import sys
 
-def mount_logs_folder(shared_folder:str, local_folder:str):
+def mount_logs_folder(shared_folder: str, local_folder: str):
     """
     function maps the shared folder to a local one
     """
@@ -103,5 +103,15 @@ if __name__ == "__main__":
         # init laser object
         laser.Laser(log, machine, log_file)
 
+    SLEEP_TIME_SEC = 1
+    LAST_N_HOURS = 24
+    sleep_counter = 0
     while True:
-        time.sleep(1)
+        # loop forever
+        time.sleep(SLEEP_TIME_SEC)
+        sleep_counter += 1
+
+        # update operation table once in a minute
+        if ((sleep_counter * SLEEP_TIME_SEC) % 60) == 0:
+            dbmanager.update_operation_of_last_hours(LAST_N_HOURS)
+            log.info(f"operations table was updated with history of {LAST_N_HOURS} last hours")
