@@ -33,6 +33,7 @@ def get_machines() -> list:
                 "name":machine[1],
                 "ip":machine[2],
                 "shared_folder":machine[3],
+                "is_active":machine[4]
             }
         )
 
@@ -86,16 +87,16 @@ def add_error_record(machine_id:int, event_sequence:int, submission_date:datetim
     val = (machine_id, event_sequence, submission_date, is_error)
     mycursor.execute(sql, val)
 
-def add_machine_record(name: str, ip: str, shared_folder: str):
+def add_machine_record(name: str, ip: str, shared_folder: str, is_active: bool):
     """
     function adds record to [machine] table
     """
     sql = (
-        "INSERT INTO machine (name, ip, shared_folder)"
-        "VALUES (%s,%s,%s)"
+        "INSERT INTO machine (name, ip, shared_folder, is_active)"
+        "VALUES (%s,%s,%s,%s)"
     )
 
-    val =  (name, ip, shared_folder)
+    val =  (name, ip, shared_folder, is_active)
     mycursor.execute(sql, val)
     commit()
 
@@ -110,13 +111,13 @@ def delete_row_from_table(record_id: int, table: str):
     mycursor.execute(sql)
     mydb.commit()
 
-def update_machine_record(record_id: int, name: str, ip: str, shared_folder: str):
+def update_machine_record(record_id: int, name: str, ip: str, shared_folder: str, is_active: bool):
     """
     function updates record in [machine] table
     """
     sql = (
         'UPDATE machine '
-        f'SET name = "{name}", ip = "{ip}", shared_folder = "{shared_folder}" '
+        f'SET name = "{name}", ip = "{ip}", shared_folder = "{shared_folder}", is_active = {is_active} '
         f'WHERE id = "{str(record_id)}"'
     )
 

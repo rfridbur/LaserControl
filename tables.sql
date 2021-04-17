@@ -66,6 +66,10 @@ CREATE TABLE error(
    FOREIGN KEY (machine_id) REFERENCES machine(id)
 );
 
+USE laserdb;
+ALTER TABLE machine
+ADD COLUMN is_active BOOLEAN NOT NULL;
+
 -- SELECT * FROM `laserdb`.`activity` LIMIT 100;
 -- SELECT * FROM `laserdb`.`error` LIMIT 100;
 -- SELECT * FROM `laserdb`.`keyswitch` LIMIT 100;
