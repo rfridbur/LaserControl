@@ -10,6 +10,8 @@ USE laserdb;
 
 -- delete table
 SET FOREIGN_KEY_CHECKS=0; DROP TABLE machine; SET FOREIGN_KEY_CHECKS=1;
+USE laserdb;
+TRUNCATE TABLE operation;
 
 CREATE TABLE machine(
    id INT PRIMARY KEY AUTO_INCREMENT,
@@ -54,6 +56,15 @@ CREATE TABLE activity(
    event_sequence INT NOT NULL,
    submission_date DATETIME(6),
    is_active BOOLEAN NOT NULL,
+   FOREIGN KEY (machine_id) REFERENCES machine(id)
+);
+
+USE laserdb;
+CREATE TABLE operation(
+   id BIGINT PRIMARY KEY AUTO_INCREMENT,
+   machine_id INT NOT NULL,
+   submission_date DATETIME(6),
+   is_working BOOLEAN NOT NULL,
    FOREIGN KEY (machine_id) REFERENCES machine(id)
 );
 
