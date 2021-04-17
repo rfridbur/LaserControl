@@ -23,6 +23,8 @@ async def root():
     # format msg dict
     root_msg = {
         "message":"go to /docs",
+        "home_folder":"/home/ubuntu/laser_server",
+        "log_folder":"/media/usbstick/pylogs",
         "server_time":server_time,
         "host_name":host_name,
         "ip_address":socket.gethostbyname(host_name),
