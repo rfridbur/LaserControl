@@ -19,6 +19,7 @@ async def root():
     is_running = is_daemon_running()
     daemon_start_time = get_daemon_start_time()
     daemon_pid = get_daemon_pid()
+    active_machines = get_active_machines()
 
     # format msg dict
     root_msg = {
@@ -39,13 +40,21 @@ async def root():
         "daemon":{
             "is_running":is_running,
             "pid":daemon_pid if is_running else 0,
-            "start_time":daemon_start_time if is_running else 0
+            "start_time":daemon_start_time if is_running else 0,
+            "active_machines":active_machines if is_running else None
         },
         "last_logs":last_log_list
     }
 
     # wrap json with html
     html_content = f'<html><body><pre><code class="prettyprint">{json.dumps(root_msg, default=json_serializer, indent=4)}</code></pre></body></html>'
+    return HTMLResponse(content=html_content, status_code=200)
+
+@app.get("/test")
+async def test():
+    with open('test.html', 'r') as f:
+        html_content = f.read()
+
     return HTMLResponse(content=html_content, status_code=200)
 
 def get_daemon_log_file() -> dict:
@@ -72,6 +81,12 @@ def get_daemon_pid() -> int:
     """
     data = get_daemon_log_file()
     return data['pid']
+
+def get_active_machines() -> list:
+    """
+    function returns list of active machines
+    """
+    return dbmanager.get_active_machines()
 
 def is_daemon_running() -> bool:
     """
@@ -102,6 +117,9 @@ class Machine(BaseModel):
     name: str
     shared_folder: str
     is_active: bool
+    user_name: str
+    domain: str
+    password: str
 
 @app.post("/machine")
 async def add_item(machine: Machine):
