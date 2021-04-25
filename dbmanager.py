@@ -131,7 +131,7 @@ def update_machine_record(record_id: int, name: str, ip: str, shared_folder: str
     mycursor.execute(sql)
     commit()
 
-def get_activity_in_last_hours(hours: int) -> list:
+def get_activity_in_last_hours(hours: int, machine_id: int) -> list:
     """
     function returns all records from [activity] table in recent hours
     """
@@ -140,7 +140,7 @@ def get_activity_in_last_hours(hours: int) -> list:
 
     sql = (
         "SELECT * FROM activity "
-        f"WHERE submission_date BETWEEN '{start_date}' AND '{end_date}'"
+        f"WHERE submission_date BETWEEN '{start_date}' AND '{end_date}' AND machine_id = {machine_id}"
     )
 
     records = []
@@ -168,16 +168,16 @@ def clear_table_data(table: str):
     mycursor.execute(sql)
     mydb.commit()
 
-def add_operation_record(machine_id: int, submission_date: datetime, is_working: bool):
+def add_operation_record(machine_id: int, submission_date: datetime, is_working: bool, duration_sec: int):
     """
     function adds record to [operation] table
     """
     sql = (
-        "INSERT INTO operation (machine_id, submission_date, is_working)"
-        "VALUES (%s,%s,%s)"
+        "INSERT INTO operation (machine_id, submission_date, is_working, duration_sec)"
+        "VALUES (%s,%s,%s,%s)"
     )
 
-    val = (machine_id, submission_date, is_working)
+    val = (machine_id, submission_date, is_working, duration_sec)
     mycursor.execute(sql, val)
 
 def update_operation_of_last_hours(hours: int):
@@ -196,39 +196,83 @@ def update_operation_of_last_hours(hours: int):
     # this is a temporary table, therefore, need to clear it first
     clear_table_data("operation")
 
-    # get all activity in the recent hours
-    avtivity_list = get_activity_in_last_hours(hours)
+    # need to generate sublists per machine
+    active_machine_list = get_active_machines()
+    for active_machine in active_machine_list:
+        machine_id = get_machine_id_from_name(active_machine)
 
-    # determine laser activity and idle time
-    # idle time starts when laster is inactive for LASER_INACTIVITY_SEC
-    # meaning, look for is_active = 0 and see if it doesn't become active in a given time
-    list_len = len(avtivity_list)
-    for i in range(list_len):
+        # get all activity in the recent hours
+        avtivity_list = get_activity_in_last_hours(hours, machine_id)
+
+        # determine laser activity and idle time
+        # idle time starts when laster is inactive for LASER_INACTIVITY_SEC
+        # meaning, look for is_active = 0 and see if it doesn't become active in a given time
+        list_len = len(avtivity_list)
+        i = 1
         # skip first and last items
-        if (i == 0) or (i == (list_len - 1)):
-            continue
+        while i < (list_len - 1):
 
-        # get neighbour activities
-        prev_item = avtivity_list[i - 1]
-        curr_item = avtivity_list[i]
-        next_item = avtivity_list[i + 1]
+            # get neighbour activities
+            prev_item = avtivity_list[i - 1]
+            curr_item = avtivity_list[i]
+            next_item = avtivity_list[i + 1]
 
-        if curr_item['is_active']:
-            # laser is on - check time it was off, compared to previous event
-            time_delta = curr_item['submission_date'] - prev_item['submission_date']
-        else:
-            # laser is off - check time it stays off, compared to next event
-            time_delta = next_item['submission_date'] - curr_item['submission_date']
+            if curr_item['is_active']:
+                # laser is on - check time it was off, compared to previous event
+                time_delta = curr_item['submission_date'] - prev_item['submission_date']
+            else:
+                # laser is off - check time it stays off, compared to next event
+                time_delta = next_item['submission_date'] - curr_item['submission_date']
 
-        if time_delta.total_seconds() > LASER_INACTIVITY_SEC:
-            # log the current activity
-            add_operation_record(curr_item['machine_id'], curr_item['submission_date'], curr_item['is_active'])
+            if time_delta.total_seconds() > LASER_INACTIVITY_SEC:
+                # log the current activity
+                # add the duration (of idle or busy to the table to ease on querries later - utilziation)
+                add_operation_record(curr_item['machine_id'], curr_item['submission_date'], curr_item['is_active'], time_delta.total_seconds())
+                # debug log
+                # is_active_str = "active" if curr_item['is_active'] else "not avtive"
+                # print(f"{active_machine} was {is_active_str} for {time_delta.total_seconds()} [sec]")
+
+            # go to next activity
+            i += 1
 
     # update [operation] table
     commit()
 
     # critical section - end
     lock.release()
+
+def get_machine_id_from_name(machine_name: str) -> int:
+    """
+    function returns machine ID by name (looks for active machines only)
+    >>> example: FR4 --> 8
+    """
+    sql = (
+        "SELECT id FROM machine "
+        f"WHERE name = '{machine_name}' AND is_active = True"
+    )
+    
+    mycursor.execute(sql)
+    return mycursor.fetchall()[0][0]
+
+def get_active_machines() -> list:
+    """
+    function returns the active machines that having records in [temperature]
+    table for the 100 records. lasers time can be shifted, therefore, use top IDs
+    """
+    sql = (
+        "SELECT machine.name, temperature.id "
+        "FROM machine INNER JOIN temperature ON machine.id = temperature.machine_id "
+        "ORDER BY temperature.id DESC "
+        "LIMIT 100"
+    )
+
+    records = set()
+    mycursor.execute(sql)
+    for record in mycursor.fetchall():
+        records.add(record[0])
+
+    # return all records
+    return list(records)
 
 def commit():
     """
