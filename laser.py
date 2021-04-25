@@ -5,7 +5,6 @@ import re
 import dbmanager
 import time
 import datetime
-import threading
 
 # const
 TIME_FORMAT = '\d+-\d+-\d+ \d+:\d+:\d+,\d+'
@@ -30,10 +29,6 @@ class Laser():
 
         self.__log.info(f"laser initialized for {self.__name} [{self.__ip}]")
 
-    # staic variable, common to all instances
-    # needed to synchronize all SQL inserts
-    lock = threading.Lock()
-
     def __on_modified(self, event):
         """
         even handler for modified file
@@ -46,7 +41,7 @@ class Laser():
         self.__db_update_lines = 0
         start_time = datetime.datetime.now()
         # critical section - start
-        self.lock.acquire()
+        dbmanager.lock.acquire()
         new_file = self.__get_file_content(self.__log_file)
 
         # the log file is incremental, therefore, to ignore previous changes
@@ -72,7 +67,7 @@ class Laser():
         self.__orig_file_content = new_file
 
         # critical section - end
-        self.lock.release()
+        dbmanager.lock.release()
         end_time = datetime.datetime.now()
         delta = end_time - start_time
         self.__log.debug(f"total lines: {total_lines_count} db update: {self.__db_update_lines}, parse time: {delta.seconds} [s] {delta.microseconds} [us]")

@@ -10,15 +10,10 @@ import laser
 import json
 import sys
 
-def mount_logs_folder(shared_folder: str, local_folder: str):
+def mount_logs_folder(shared_folder: str, local_folder: str, user_name: str, domain: str, password: str):
     """
     function maps the shared folder to a local one
     """
-    # credentials
-    user_name = "Rofin"
-    domain = ""
-    password = "Rofin"
-
     # unmount
     os.system(f"sudo umount -l {local_folder}")
 
@@ -92,26 +87,27 @@ if __name__ == "__main__":
         local_folder = os.path.join("/", "mnt", "my_drive", machine['name'])
 
         # handle shared folders
-        mount_logs_folder(shared_folder, local_folder)
+        mount_logs_folder(shared_folder, local_folder, machine['user_name'], machine['domain'], machine['password'])
 
         # verify "lc.log" exists in the mounted folder
         log_file = os.path.join(local_folder, "lc.log")
-        if not os.path.exists(log_file):
+        if os.path.exists(log_file):
+            # init laser object
+            laser.Laser(log, machine, log_file)
+        else:
+            log.error(f"failed to activate laser {machine['name']} check IP {machine['ip']}")
             log.error(f"file not found in {log_file}")
-            sys.exit(1)
-
-        # init laser object
-        laser.Laser(log, machine, log_file)
 
     SLEEP_TIME_SEC = 1
     LAST_N_HOURS = 24
     sleep_counter = 0
     while True:
-        # loop forever
-        time.sleep(SLEEP_TIME_SEC)
-        sleep_counter += 1
 
         # update operation table once in a minute
         if ((sleep_counter * SLEEP_TIME_SEC) % 60) == 0:
             dbmanager.update_operation_of_last_hours(LAST_N_HOURS)
             log.info(f"operations table was updated with history of {LAST_N_HOURS} last hours")
+
+        # loop forever
+        time.sleep(SLEEP_TIME_SEC)
+        sleep_counter += 1

@@ -2,6 +2,7 @@ import mysql.connector
 import datetime
 import time
 import sys
+import threading
 
 # all methods are static - no class is needed
 
@@ -13,8 +14,11 @@ mydb = mysql.connector.connect(
     auth_plugin='mysql_native_password'
 )
 
+# global variable, common to all instances
+# needed to synchronize all SQL inserts
+lock = threading.Lock()
+
 mycursor = mydb.cursor()
-# mydb.autocommit = True
 
 def get_machines() -> list:
     """
@@ -33,7 +37,10 @@ def get_machines() -> list:
                 "name":machine[1],
                 "ip":machine[2],
                 "shared_folder":machine[3],
-                "is_active":machine[4]
+                "is_active":machine[4],
+                "user_name":machine[5],
+                "domain":machine[6],
+                "password":machine[7]
             }
         )
 
@@ -175,11 +182,14 @@ def add_operation_record(machine_id: int, submission_date: datetime, is_working:
 
 def update_operation_of_last_hours(hours: int):
     """
-    function update the [operation] table with [activity] from the last hours
-    this is a helper function to ease on queries later that scans the [activity] table
+    function updates the [operation] table with [activity] from the last hours
+    this is a helper function to ease on queries later that scan the [activity] table
     and extracts the time where laser was active based on assumption that if a laser
     is idle for more than 30 sec, it means that it is not working
     """
+    # critical section - start
+    lock.acquire()
+
     # indicator after which laser becomes inactive
     LASER_INACTIVITY_SEC = 30
 
@@ -216,6 +226,9 @@ def update_operation_of_last_hours(hours: int):
 
     # update [operation] table
     commit()
+
+    # critical section - end
+    lock.release()
 
 def commit():
     """
