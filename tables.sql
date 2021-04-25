@@ -65,6 +65,7 @@ CREATE TABLE operation(
    machine_id INT NOT NULL,
    submission_date DATETIME(6),
    is_working BOOLEAN NOT NULL,
+   duration_sec INT NOT NULL,
    FOREIGN KEY (machine_id) REFERENCES machine(id)
 );
 
@@ -77,9 +78,28 @@ CREATE TABLE error(
    FOREIGN KEY (machine_id) REFERENCES machine(id)
 );
 
+
 USE laserdb;
+CREATE TABLE user(
+  userid INT PRIMARY KEY AUTO_INCREMENT,
+  submission_date DATETIME(6),
+  machine_id INT NOT NULL,
+  daily_parts INT NOT NULL,
+  FOREIGN KEY (machine_id) REFERENCES machine(id)
+);
+
 ALTER TABLE machine
 ADD COLUMN is_active BOOLEAN NOT NULL;
+
+USE laserdb;
+ALTER TABLE operation
+ADD COLUMN duration_sec INT NOT NULL;
+
+USE laserdb;
+ALTER TABLE machine
+ADD COLUMN user_name VARCHAR(50),
+ADD COLUMN domain VARCHAR(50),
+ADD COLUMN password VARCHAR(50);
 
 -- SELECT * FROM `laserdb`.`activity` LIMIT 100;
 -- SELECT * FROM `laserdb`.`error` LIMIT 100;
