@@ -99,7 +99,7 @@ if __name__ == "__main__":
             log.error(f"file not found in {log_file}")
 
     SLEEP_TIME_SEC = 1
-    LAST_N_HOURS = 24
+    LAST_N_HOURS = 120
     sleep_counter = 0
     while True:
 
